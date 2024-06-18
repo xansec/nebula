@@ -1,0 +1,11 @@
+image: ghcr.io/xansec/nebula-tests
+duration: 1200
+project: nebula
+target: firewall-addrule
+
+testsuite:
+  - file://testdata/fuzz/FuzzFirewall_AddRule
+
+cmds:
+  - cmd: /nebula_test -test.run FuzzFirewall_AddRule/input
+    filepath: /testdata/fuzz/FuzzFirewall_AddRule/input

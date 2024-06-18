@@ -55,6 +55,20 @@ func TestNewFirewall(t *testing.T) {
 	assert.Equal(t, 3602, conntrack.TimerWheel.wheelLen)
 }
 
+func FuzzNewFirewall(f *testing.F) {
+	// Seed with some initial values
+	f.Add(int64(time.Second), int64(time.Minute), int64(time.Hour))
+
+	f.Fuzz(func(t *testing.T, tcpTimeout int64, udpTimeout int64, defaultTimeout int64) {
+		l := test.NewLogger()
+		c := &cert.NebulaCertificate{}
+		tcpTimeoutDuration := time.Duration(tcpTimeout)
+		udpTimeoutDuration := time.Duration(udpTimeout)
+		defaultTimeoutDuration := time.Duration(defaultTimeout)
+		NewFirewall(l, tcpTimeoutDuration, udpTimeoutDuration, defaultTimeoutDuration, c)
+	})
+}
+
 func TestFirewall_AddRule(t *testing.T) {
 	l := test.NewLogger()
 	ob := &bytes.Buffer{}
@@ -118,6 +132,30 @@ func TestFirewall_AddRule(t *testing.T) {
 	fw = NewFirewall(l, time.Second, time.Minute, time.Hour, c)
 	assert.Error(t, fw.AddRule(true, math.MaxUint8, 0, 0, []string{}, "", nil, nil, "", ""))
 	assert.Error(t, fw.AddRule(true, firewall.ProtoAny, 10, 0, []string{}, "", nil, nil, "", ""))
+}
+
+func FuzzFirewall_AddRule(f *testing.F) {
+	// Seed with some initial values
+	f.Add(int64(time.Second), int64(time.Minute), int64(time.Hour), true, uint8(firewall.ProtoAny), int32(0), int32(65535), "group", "host", "192.168.1.1/32", "127.0.0.1/32", "Hello", "1234")
+
+	f.Fuzz(func(t *testing.T, tcpTimeout int64, udpTimeout int64, defaultTimeout int64, incoming bool, proto uint8, startPort int32, endPort int32, group string, host string, ips string, localIps string, caName string, caSha string) {
+		l := test.NewLogger()
+		c := &cert.NebulaCertificate{}
+		tcpTimeoutDuration := time.Duration(tcpTimeout)
+		udpTimeoutDuration := time.Duration(udpTimeout)
+		defaultTimeoutDuration := time.Duration(defaultTimeout)
+		groups := []string{group}
+		_, ip, err := net.ParseCIDR(ips)
+		if err != nil {
+			return
+		}
+		_, localIp, err := net.ParseCIDR(localIps)
+		if err != nil {
+			return
+		}
+		fw := NewFirewall(l, tcpTimeoutDuration, udpTimeoutDuration, defaultTimeoutDuration, c)
+		fw.AddRule(incoming, proto, startPort, endPort, groups, host, ip, localIp, caName, caSha)
+	})
 }
 
 func TestFirewall_Drop(t *testing.T) {

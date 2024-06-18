@@ -1,0 +1,11 @@
+image: ghcr.io/xansec/nebula
+duration: 1200
+project: nebula
+target: bin-lighthouse
+
+cmds:
+  - cmd: /nebula -config config-lighthouse.yml
+    network:
+      url: 'udp://192.168.100.1:4242'
+      timeout: 5
+      client: false

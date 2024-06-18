@@ -1,0 +1,11 @@
+image: ghcr.io/xansec/nebula-tests
+duration: 1200
+project: nebula
+target: newfirewall
+
+testsuite:
+  - file://testdata/fuzz/FuzzNewFirewall
+
+cmds:
+  - cmd: /nebula_test -test.run NewFirewall/input
+    filepath: /testdata/fuzz/FuzzNewFirewall/input

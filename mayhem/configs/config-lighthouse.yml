@@ -1,0 +1,27 @@
+static_host_map:
+
+lighthouse:
+  am_lighthouse: true
+
+listen:
+  host: 0.0.0.0
+  port: 4242
+
+firewall:
+  outbound:
+    - port: any
+      proto: any
+      host: any
+
+  inbound:
+    - port: any
+      proto: any
+      host: any
+
+pki:
+  ca: /ca.crt
+  cert: /lighthouse1.crt
+  key: /lighthouse1.key
+
+tun:
+  disabled: true
