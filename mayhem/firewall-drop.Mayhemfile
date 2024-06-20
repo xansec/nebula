@@ -1,0 +1,11 @@
+image: ghcr.io/xansec/nebula-tests
+duration: 1200
+project: nebula
+target: firewall-drop
+
+testsuite:
+  - file://testdata/fuzz/FuzzFirewall_Drop
+
+cmds:
+  - cmd: /nebula_test -test.run FuzzFirewall_Drop/input
+    filepath: /testdata/fuzz/FuzzFirewall_Drop/input
