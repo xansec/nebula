@@ -1,0 +1,8 @@
+image: ghcr.io/xansec/nebula-tests:go-fuzz
+duration: 1200
+project: nebula
+target: firewall-addfirewallrulesfromconfig
+
+cmds:
+  - cmd: /nebula/harnesses/firewall/fuzz_add_firewall_rules_from_config.libfuzzer
+    libfuzzer: true

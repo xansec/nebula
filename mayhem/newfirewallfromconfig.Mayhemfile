@@ -1,11 +1,8 @@
-image: ghcr.io/xansec/nebula-tests
+image: ghcr.io/xansec/nebula-tests:go-fuzz
 duration: 1200
 project: nebula
 target: newfirewallfromconfig
 
-testsuite:
-  - file://testdata/fuzz/FuzzNewFirewallFromConfig
-
 cmds:
-  - cmd: /nebula_test -test.run FuzzNewFirewallFromConfig/input
-    filepath: /testdata/fuzz/FuzzNewFirewallFromConfig/input
+  - cmd: /nebula/harnesses/firewall/fuzz_new_firewall_from_config.libfuzzer
+    libfuzzer: true

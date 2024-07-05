@@ -55,20 +55,6 @@ func TestNewFirewall(t *testing.T) {
 	assert.Equal(t, 3602, conntrack.TimerWheel.wheelLen)
 }
 
-func FuzzNewFirewall_NoConfig(f *testing.F) {
-	// Seed with some initial values
-	f.Add(int64(time.Second), int64(time.Minute), int64(time.Hour))
-
-	f.Fuzz(func(t *testing.T, tcpTimeout int64, udpTimeout int64, defaultTimeout int64) {
-		l := test.NewLogger()
-		c := &cert.NebulaCertificate{}
-		tcpTimeoutDuration := time.Duration(tcpTimeout)
-		udpTimeoutDuration := time.Duration(udpTimeout)
-		defaultTimeoutDuration := time.Duration(defaultTimeout)
-		NewFirewall(l, tcpTimeoutDuration, udpTimeoutDuration, defaultTimeoutDuration, c)
-	})
-}
-
 func TestFirewall_AddRule(t *testing.T) {
 	l := test.NewLogger()
 	ob := &bytes.Buffer{}
@@ -132,27 +118,6 @@ func TestFirewall_AddRule(t *testing.T) {
 	fw = NewFirewall(l, time.Second, time.Minute, time.Hour, c)
 	assert.Error(t, fw.AddRule(true, math.MaxUint8, 0, 0, []string{}, "", nil, nil, "", ""))
 	assert.Error(t, fw.AddRule(true, firewall.ProtoAny, 10, 0, []string{}, "", nil, nil, "", ""))
-}
-
-func FuzzFirewall_AddRule(f *testing.F) {
-	// Seed with some initial values
-	f.Add(true, uint8(firewall.ProtoAny), int32(0), int32(65535), "group", "host", "192.168.1.1/32", "127.0.0.1/32", "Hello", "1234")
-
-	f.Fuzz(func(t *testing.T, incoming bool, proto uint8, startPort int32, endPort int32, group string, host string, ips string, localIps string, caName string, caSha string) {
-		l := test.NewLogger()
-		c := &cert.NebulaCertificate{}
-		groups := []string{group}
-		_, ip, err := net.ParseCIDR(ips)
-		if err != nil {
-			return
-		}
-		_, localIp, err := net.ParseCIDR(localIps)
-		if err != nil {
-			return
-		}
-		fw := NewFirewall(l, time.Second, time.Minute, time.Hour, c)
-		fw.AddRule(incoming, proto, startPort, endPort, groups, host, ip, localIp, caName, caSha)
-	})
 }
 
 func TestFirewall_Drop(t *testing.T) {
@@ -234,58 +199,6 @@ func TestFirewall_Drop(t *testing.T) {
 	assert.Nil(t, fw.AddRule(true, firewall.ProtoAny, 0, 0, []string{"nope"}, "", nil, nil, "ca-good-bad", ""))
 	assert.Nil(t, fw.AddRule(true, firewall.ProtoAny, 0, 0, []string{"default-group"}, "", nil, nil, "ca-good", ""))
 	assert.NoError(t, fw.Drop(p, true, &h, cp, nil))
-}
-
-func FuzzFirewall_Drop(f *testing.F) {
-	// Seed the fuzzer with some initial values
-	f.Add([]byte{1, 2, 3, 4}, []byte{1, 2, 3, 4}, uint16(10), uint16(90), byte(firewall.ProtoUDP), false, []byte{1, 2, 3, 4}, []byte{255, 255, 255, 0}, "host1", "default-group", "signer-shasum")
-
-	f.Fuzz(func(t *testing.T, localIP, remoteIP []byte, localPort, remotePort uint16, protocol byte, fragment bool, netIP []byte, netMask []byte, certName string, certGroups string, certIssuer string) {
-		// Ensure IP addresses are the correct length
-		if len(localIP) != 4 || len(remoteIP) != 4 || len(netIP) != 4 || len(netMask) != 4 {
-			t.Skip("Invalid IP length")
-		}
-
-		l := test.NewLogger()
-
-		p := firewall.Packet{
-			LocalIP:    iputil.Ip2VpnIp(net.IP(localIP)),
-			RemoteIP:   iputil.Ip2VpnIp(net.IP(remoteIP)),
-			LocalPort:  localPort,
-			RemotePort: remotePort,
-			Protocol:   protocol,
-			Fragment:   fragment,
-		}
-
-		ipNet := net.IPNet{
-			IP:   net.IPv4(netIP[0], netIP[1], netIP[2], netIP[3]),
-			Mask: net.IPMask{netMask[0], netMask[1], netMask[2], netMask[3]},
-		}
-
-		c := cert.NebulaCertificate{
-			Details: cert.NebulaCertificateDetails{
-				Name:           certName,
-				Ips:            []*net.IPNet{&ipNet},
-				Groups:         []string{certGroups},
-				InvertedGroups: map[string]struct{}{certGroups: {}},
-				Issuer:         certIssuer,
-			},
-		}
-		h := HostInfo{
-			ConnectionState: &ConnectionState{
-				peerCert: &c,
-			},
-			vpnIp: iputil.Ip2VpnIp(ipNet.IP),
-		}
-		h.CreateRemoteCIDR(&c)
-
-		fw := NewFirewall(l, time.Second, time.Minute, time.Hour, &c)
-		fw.AddRule(true, firewall.ProtoAny, 0, 0, []string{"default-group"}, "", nil, nil, "", "")
-
-		cp := cert.NewCAPool()
-
-		fw.Drop(p, false, &h, cp, nil)
-	})
 }
 
 func BenchmarkFirewallTable_match(b *testing.B) {
@@ -771,15 +684,6 @@ func Test_parsePort(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Fuzz_parsePort(f *testing.F) {
-	// Seed the fuzzer with some initial values
-	f.Add("1-2")
-
-	f.Fuzz(func(t *testing.T, s string) {
-		parsePort(s)
-	})
-}
-
 func TestNewFirewallFromConfig(t *testing.T) {
 	l := test.NewLogger()
 	// Test a bad rule definition
@@ -834,19 +738,6 @@ func TestNewFirewallFromConfig(t *testing.T) {
 	conf.Settings["firewall"] = map[interface{}]interface{}{"inbound": []interface{}{map[interface{}]interface{}{"port": "1", "proto": "any", "group": "a", "groups": []string{"b", "c"}}}}
 	_, err = NewFirewallFromConfig(l, c, conf)
 	assert.EqualError(t, err, "firewall.inbound rule #0; only one of group or groups should be defined, both provided")
-}
-
-func FuzzNewFirewallFromConfig(f *testing.F) {
-	// Seed the fuzzer with some initial values
-	f.Add("outbound", "1", "any", "a")
-
-	f.Fuzz(func(t *testing.T, direction, port, proto, host string) {
-		l := test.NewLogger()
-		c := &cert.NebulaCertificate{}
-		conf := config.NewC(l)
-		conf.Settings["firewall"] = map[interface{}]interface{}{direction: []interface{}{map[interface{}]interface{}{"port": port, "proto": proto, "host": host}}}
-		NewFirewallFromConfig(l, c, conf)
-	})
 }
 
 func TestAddFirewallRulesFromConfig(t *testing.T) {
@@ -937,19 +828,6 @@ func TestAddFirewallRulesFromConfig(t *testing.T) {
 	assert.EqualError(t, AddFirewallRulesFromConfig(l, true, conf, mf), "firewall.inbound rule #0; `test error`")
 }
 
-func FuzzAddFirewallRulesFromConfig(f *testing.F) {
-	// Seed the fuzzer with some initial values
-	f.Add("inbound", "1", "any", "a")
-
-	f.Fuzz(func(t *testing.T, direction, port, proto, host string) {
-		l := test.NewLogger()
-		conf := config.NewC(l)
-		mf := &mockFirewall{}
-		conf.Settings["firewall"] = map[interface{}]interface{}{direction: []interface{}{map[interface{}]interface{}{"port": port, "proto": proto, "host": host}}}
-		AddFirewallRulesFromConfig(l, true, conf, mf)
-	})
-}
-
 func TestFirewall_convertRule(t *testing.T) {
 	l := test.NewLogger()
 	ob := &bytes.Buffer{}
@@ -984,20 +862,6 @@ func TestFirewall_convertRule(t *testing.T) {
 	r, err = convertRule(l, c, "test", 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "group1", r.Group)
-}
-
-func Fuzz_convertRule(f *testing.F) {
-	// Seed the fuzzer with some initial values
-	f.Add("default-group", "test", 1)
-
-	f.Fuzz(func(t *testing.T, group string, name string, rule int) {
-		l := test.NewLogger()
-		c := map[interface{}]interface{}{
-			"group": group,
-		}
-
-		convertRule(l, c, name, rule)
-	})
 }
 
 type addRuleCall struct {

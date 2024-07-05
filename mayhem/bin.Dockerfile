@@ -1,4 +1,4 @@
-FROM golang AS builder
+FROM golang:1.22 AS builder
 
 COPY . /workspace
 WORKDIR /workspace
