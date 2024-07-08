@@ -11,9 +11,13 @@ import (
 
 func FuzzNewFirewall(data []byte) int {
 	fdata := fuzz.NewConsumer(data)
-	tcpTimeout, _ := fdata.GetInt()
-	udpTimeout, _ := fdata.GetInt()
-	defaultTimeout, _ := fdata.GetInt()
+	tcpTimeout, _ := fdata.GetUint64()
+	udpTimeout, _ := fdata.GetUint64()
+	defaultTimeout, _ := fdata.GetUint64()
+
+	if tcpTimeout == 0 || udpTimeout == 0 || defaultTimeout == 0 {
+		return 0
+	}
 
 	var c *cert.NebulaCertificate
 	fdata.GenerateStruct(&c)
