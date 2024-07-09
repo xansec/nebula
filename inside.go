@@ -10,7 +10,7 @@ import (
 )
 
 func (f *Interface) consumeInsidePacket(packet []byte, fwPacket *firewall.Packet, nb, out []byte, q int, localCache firewall.ConntrackCache) {
-	err := newPacket(packet, false, fwPacket)
+	err := NewPacket(packet, false, fwPacket)
 	if err != nil {
 		if f.l.Level >= logrus.DebugLevel {
 			f.l.WithField("packet", packet).Debugf("Error while validating outbound packet: %s", err)
@@ -135,7 +135,7 @@ func (f *Interface) getOrHandshake(vpnIp iputil.VpnIp, cacheCallback func(*Hands
 
 func (f *Interface) sendMessageNow(t header.MessageType, st header.MessageSubType, hostinfo *HostInfo, p, nb, out []byte) {
 	fp := &firewall.Packet{}
-	err := newPacket(p, false, fp)
+	err := NewPacket(p, false, fp)
 	if err != nil {
 		f.l.Warnf("error while parsing outgoing packet for firewall check; %v", err)
 		return

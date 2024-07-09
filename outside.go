@@ -303,7 +303,7 @@ func (f *Interface) handleEncrypted(ci *ConnectionState, addr *udp.Addr, h *head
 }
 
 // newPacket validates and parses the interesting bits for the firewall out of the ip and sub protocol headers
-func newPacket(data []byte, incoming bool, fp *firewall.Packet) error {
+func NewPacket(data []byte, incoming bool, fp *firewall.Packet) error {
 	// Do we at least have an ipv4 header worth of data?
 	if len(data) < ipv4.HeaderLen {
 		return fmt.Errorf("packet is less than %v bytes", ipv4.HeaderLen)
@@ -391,7 +391,7 @@ func (f *Interface) decryptToTun(hostinfo *HostInfo, messageCounter uint64, out 
 		return false
 	}
 
-	err = newPacket(out, true, fwPacket)
+	err = NewPacket(out, true, fwPacket)
 	if err != nil {
 		hostinfo.logger(f.l).WithError(err).WithField("packet", out).
 			Warnf("Error while validating inbound packet")
