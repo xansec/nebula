@@ -1,13 +1,11 @@
 package nebula
 
 import (
-	"net"
+	"net/netip"
 	"testing"
 	"time"
 
-	"github.com/slackhq/nebula/cert"
 	"github.com/slackhq/nebula/header"
-	"github.com/slackhq/nebula/iputil"
 	"github.com/slackhq/nebula/test"
 	"github.com/slackhq/nebula/udp"
 	"github.com/stretchr/testify/assert"
@@ -15,10 +13,11 @@ import (
 
 func Test_NewHandshakeManagerVpnIp(t *testing.T) {
 	l := test.NewLogger()
-	_, vpncidr, _ := net.ParseCIDR("172.1.1.1/24")
-	_, localrange, _ := net.ParseCIDR("10.1.1.1/24")
-	ip := iputil.Ip2VpnIp(net.ParseIP("172.1.1.2"))
-	preferredRanges := []*net.IPNet{localrange}
+	vpncidr := netip.MustParsePrefix("172.1.1.1/24")
+	localrange := netip.MustParsePrefix("10.1.1.1/24")
+	ip := netip.MustParseAddr("172.1.1.2")
+
+	preferredRanges := []netip.Prefix{localrange}
 	mainHM := newHostMap(l, vpncidr)
 	mainHM.preferredRanges.Store(&preferredRanges)
 
@@ -27,7 +26,7 @@ func Test_NewHandshakeManagerVpnIp(t *testing.T) {
 	cs := &CertState{
 		RawCertificate:      []byte{},
 		PrivateKey:          []byte{},
-		Certificate:         &cert.NebulaCertificate{},
+		Certificate:         &dummyCert{},
 		RawCertificateNoKey: []byte{},
 	}
 
@@ -66,7 +65,7 @@ func Test_NewHandshakeManagerVpnIp(t *testing.T) {
 	assert.NotContains(t, blah.vpnIps, ip)
 }
 
-func testCountTimerWheelEntries(tw *LockingTimerWheel[iputil.VpnIp]) (c int) {
+func testCountTimerWheelEntries(tw *LockingTimerWheel[netip.Addr]) (c int) {
 	for _, i := range tw.t.wheel {
 		n := i.Head
 		for n != nil {
@@ -80,7 +79,7 @@ func testCountTimerWheelEntries(tw *LockingTimerWheel[iputil.VpnIp]) (c int) {
 type mockEncWriter struct {
 }
 
-func (mw *mockEncWriter) SendMessageToVpnIp(t header.MessageType, st header.MessageSubType, vpnIp iputil.VpnIp, p, nb, out []byte) {
+func (mw *mockEncWriter) SendMessageToVpnIp(t header.MessageType, st header.MessageSubType, vpnIp netip.Addr, p, nb, out []byte) {
 	return
 }
 
@@ -92,4 +91,4 @@ func (mw *mockEncWriter) SendMessageToHostInfo(t header.MessageType, st header.M
 	return
 }
 
-func (mw *mockEncWriter) Handshake(vpnIP iputil.VpnIp) {}
+func (mw *mockEncWriter) Handshake(vpnIP netip.Addr) {}

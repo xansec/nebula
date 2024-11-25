@@ -3,6 +3,8 @@ package nebula
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -10,8 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/slackhq/nebula/cert"
 	"github.com/slackhq/nebula/header"
-	"github.com/slackhq/nebula/iputil"
-	"github.com/slackhq/nebula/udp"
 )
 
 type trafficDecision int
@@ -224,8 +224,8 @@ func (n *connectionManager) migrateRelayUsed(oldhostinfo, newhostinfo *HostInfo)
 		existing, ok := newhostinfo.relayState.QueryRelayForByIp(r.PeerIp)
 
 		var index uint32
-		var relayFrom iputil.VpnIp
-		var relayTo iputil.VpnIp
+		var relayFrom netip.Addr
+		var relayTo netip.Addr
 		switch {
 		case ok && existing.State == Established:
 			// This relay already exists in newhostinfo, then do nothing.
@@ -235,7 +235,7 @@ func (n *connectionManager) migrateRelayUsed(oldhostinfo, newhostinfo *HostInfo)
 			index = existing.LocalIndex
 			switch r.Type {
 			case TerminalType:
-				relayFrom = n.intf.myVpnIp
+				relayFrom = n.intf.myVpnNet.Addr()
 				relayTo = existing.PeerIp
 			case ForwardingType:
 				relayFrom = existing.PeerIp
@@ -260,7 +260,7 @@ func (n *connectionManager) migrateRelayUsed(oldhostinfo, newhostinfo *HostInfo)
 			}
 			switch r.Type {
 			case TerminalType:
-				relayFrom = n.intf.myVpnIp
+				relayFrom = n.intf.myVpnNet.Addr()
 				relayTo = r.PeerIp
 			case ForwardingType:
 				relayFrom = r.PeerIp
@@ -270,12 +270,16 @@ func (n *connectionManager) migrateRelayUsed(oldhostinfo, newhostinfo *HostInfo)
 			}
 		}
 
+		//TODO: IPV6-WORK
+		relayFromB := relayFrom.As4()
+		relayToB := relayTo.As4()
+
 		// Send a CreateRelayRequest to the peer.
 		req := NebulaControl{
 			Type:                NebulaControl_CreateRelayRequest,
 			InitiatorRelayIndex: index,
-			RelayFromIp:         uint32(relayFrom),
-			RelayToIp:           uint32(relayTo),
+			RelayFromIp:         binary.BigEndian.Uint32(relayFromB[:]),
+			RelayToIp:           binary.BigEndian.Uint32(relayToB[:]),
 		}
 		msg, err := req.Marshal()
 		if err != nil {
@@ -283,8 +287,8 @@ func (n *connectionManager) migrateRelayUsed(oldhostinfo, newhostinfo *HostInfo)
 		} else {
 			n.intf.SendMessageToHostInfo(header.Control, 0, newhostinfo, msg, make([]byte, 12), make([]byte, mtu))
 			n.l.WithFields(logrus.Fields{
-				"relayFrom":           iputil.VpnIp(req.RelayFromIp),
-				"relayTo":             iputil.VpnIp(req.RelayToIp),
+				"relayFrom":           req.RelayFromIp,
+				"relayTo":             req.RelayToIp,
 				"initiatorRelayIndex": req.InitiatorRelayIndex,
 				"responderRelayIndex": req.ResponderRelayIndex,
 				"vpnIp":               newhostinfo.vpnIp}).
@@ -403,7 +407,7 @@ func (n *connectionManager) shouldSwapPrimary(current, primary *HostInfo) bool {
 	// If we are here then we have multiple tunnels for a host pair and neither side believes the same tunnel is primary.
 	// Let's sort this out.
 
-	if current.vpnIp < n.intf.myVpnIp {
+	if current.vpnIp.Compare(n.intf.myVpnNet.Addr()) < 0 {
 		// Only one side should flip primary because if both flip then we may never resolve to a single tunnel.
 		// vpn ip is static across all tunnels for this host pair so lets use that to determine who is flipping.
 		// The remotes vpn ip is lower than mine. I will not flip.
@@ -411,7 +415,7 @@ func (n *connectionManager) shouldSwapPrimary(current, primary *HostInfo) bool {
 	}
 
 	certState := n.intf.pki.GetCertState()
-	return bytes.Equal(current.ConnectionState.myCert.Signature, certState.Certificate.Signature)
+	return bytes.Equal(current.ConnectionState.myCert.Signature(), certState.Certificate.Signature())
 }
 
 func (n *connectionManager) swapPrimary(current, primary *HostInfo) {
@@ -432,8 +436,9 @@ func (n *connectionManager) isInvalidCertificate(now time.Time, hostinfo *HostIn
 		return false
 	}
 
-	valid, err := remoteCert.VerifyWithCache(now, n.intf.pki.GetCAPool())
-	if valid {
+	caPool := n.intf.pki.GetCAPool()
+	err := caPool.VerifyCachedCertificate(now, remoteCert)
+	if err == nil {
 		return false
 	}
 
@@ -442,9 +447,8 @@ func (n *connectionManager) isInvalidCertificate(now time.Time, hostinfo *HostIn
 		return false
 	}
 
-	fingerprint, _ := remoteCert.Sha256Sum()
 	hostinfo.logger(n.l).WithError(err).
-		WithField("fingerprint", fingerprint).
+		WithField("fingerprint", remoteCert.Fingerprint).
 		Info("Remote certificate is no longer valid, tearing down the tunnel")
 
 	return true
@@ -457,12 +461,12 @@ func (n *connectionManager) sendPunch(hostinfo *HostInfo) {
 	}
 
 	if n.punchy.GetTargetEverything() {
-		hostinfo.remotes.ForEach(n.hostMap.GetPreferredRanges(), func(addr *udp.Addr, preferred bool) {
+		hostinfo.remotes.ForEach(n.hostMap.GetPreferredRanges(), func(addr netip.AddrPort, preferred bool) {
 			n.metricsTxPunchy.Inc(1)
 			n.intf.outside.WriteTo([]byte{1}, addr)
 		})
 
-	} else if hostinfo.remote != nil {
+	} else if hostinfo.remote.IsValid() {
 		n.metricsTxPunchy.Inc(1)
 		n.intf.outside.WriteTo([]byte{1}, hostinfo.remote)
 	}
@@ -470,7 +474,7 @@ func (n *connectionManager) sendPunch(hostinfo *HostInfo) {
 
 func (n *connectionManager) tryRehandshake(hostinfo *HostInfo) {
 	certState := n.intf.pki.GetCertState()
-	if bytes.Equal(hostinfo.ConnectionState.myCert.Signature, certState.Certificate.Signature) {
+	if bytes.Equal(hostinfo.ConnectionState.myCert.Signature(), certState.Certificate.Signature()) {
 		return
 	}
 

@@ -3,7 +3,7 @@ package e2e
 import (
 	"crypto/rand"
 	"io"
-	"net"
+	"net/netip"
 	"time"
 
 	"github.com/slackhq/nebula/cert"
@@ -12,7 +12,7 @@ import (
 )
 
 // NewTestCaCert will generate a CA cert
-func NewTestCaCert(before, after time.Time, ips, subnets []*net.IPNet, groups []string) (*cert.NebulaCertificate, []byte, []byte, []byte) {
+func NewTestCaCert(before, after time.Time, networks, unsafeNetworks []netip.Prefix, groups []string) (cert.Certificate, []byte, []byte, []byte) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if before.IsZero() {
 		before = time.Now().Add(time.Second * -60).Round(time.Second)
@@ -21,50 +21,34 @@ func NewTestCaCert(before, after time.Time, ips, subnets []*net.IPNet, groups []
 		after = time.Now().Add(time.Second * 60).Round(time.Second)
 	}
 
-	nc := &cert.NebulaCertificate{
-		Details: cert.NebulaCertificateDetails{
-			Name:           "test ca",
-			NotBefore:      time.Unix(before.Unix(), 0),
-			NotAfter:       time.Unix(after.Unix(), 0),
-			PublicKey:      pub,
-			IsCA:           true,
-			InvertedGroups: make(map[string]struct{}),
-		},
+	t := &cert.TBSCertificate{
+		Version:        cert.Version1,
+		Name:           "test ca",
+		NotBefore:      time.Unix(before.Unix(), 0),
+		NotAfter:       time.Unix(after.Unix(), 0),
+		PublicKey:      pub,
+		Networks:       networks,
+		UnsafeNetworks: unsafeNetworks,
+		Groups:         groups,
+		IsCA:           true,
 	}
 
-	if len(ips) > 0 {
-		nc.Details.Ips = ips
-	}
-
-	if len(subnets) > 0 {
-		nc.Details.Subnets = subnets
-	}
-
-	if len(groups) > 0 {
-		nc.Details.Groups = groups
-	}
-
-	err = nc.Sign(cert.Curve_CURVE25519, priv)
+	c, err := t.Sign(nil, cert.Curve_CURVE25519, priv)
 	if err != nil {
 		panic(err)
 	}
 
-	pem, err := nc.MarshalToPEM()
+	pem, err := c.MarshalPEM()
 	if err != nil {
 		panic(err)
 	}
 
-	return nc, pub, priv, pem
+	return c, pub, priv, pem
 }
 
 // NewTestCert will generate a signed certificate with the provided details.
 // Expiry times are defaulted if you do not pass them in
-func NewTestCert(ca *cert.NebulaCertificate, key []byte, name string, before, after time.Time, ip *net.IPNet, subnets []*net.IPNet, groups []string) (*cert.NebulaCertificate, []byte, []byte, []byte) {
-	issuer, err := ca.Sha256Sum()
-	if err != nil {
-		panic(err)
-	}
-
+func NewTestCert(ca cert.Certificate, key []byte, name string, before, after time.Time, networks, unsafeNetworks []netip.Prefix, groups []string) (cert.Certificate, []byte, []byte, []byte) {
 	if before.IsZero() {
 		before = time.Now().Add(time.Second * -60).Round(time.Second)
 	}
@@ -74,33 +58,29 @@ func NewTestCert(ca *cert.NebulaCertificate, key []byte, name string, before, af
 	}
 
 	pub, rawPriv := x25519Keypair()
-
-	nc := &cert.NebulaCertificate{
-		Details: cert.NebulaCertificateDetails{
-			Name:           name,
-			Ips:            []*net.IPNet{ip},
-			Subnets:        subnets,
-			Groups:         groups,
-			NotBefore:      time.Unix(before.Unix(), 0),
-			NotAfter:       time.Unix(after.Unix(), 0),
-			PublicKey:      pub,
-			IsCA:           false,
-			Issuer:         issuer,
-			InvertedGroups: make(map[string]struct{}),
-		},
+	nc := &cert.TBSCertificate{
+		Version:        cert.Version1,
+		Name:           name,
+		Networks:       networks,
+		UnsafeNetworks: unsafeNetworks,
+		Groups:         groups,
+		NotBefore:      time.Unix(before.Unix(), 0),
+		NotAfter:       time.Unix(after.Unix(), 0),
+		PublicKey:      pub,
+		IsCA:           false,
 	}
 
-	err = nc.Sign(ca.Details.Curve, key)
+	c, err := nc.Sign(ca, ca.Curve(), key)
 	if err != nil {
 		panic(err)
 	}
 
-	pem, err := nc.MarshalToPEM()
+	pem, err := c.MarshalPEM()
 	if err != nil {
 		panic(err)
 	}
 
-	return nc, pub, cert.MarshalX25519PrivateKey(rawPriv), pem
+	return c, pub, cert.MarshalPrivateKeyToPEM(cert.Curve_CURVE25519, rawPriv), pem
 }
 
 func x25519Keypair() ([]byte, []byte) {
