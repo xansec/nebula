@@ -1,19 +1,18 @@
 package fuzz_firewall
 
 import (
-	"net"
+	"net/netip"
 	"time"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 	"github.com/slackhq/nebula"
-	"github.com/slackhq/nebula/cert"
 	"github.com/slackhq/nebula/test"
 )
 
 func FuzzFirewall_AddRule(data []byte) int {
 	fdata := fuzz.NewConsumer(data)
 	l := test.NewLogger()
-	c := &cert.NebulaCertificate{}
+	c := &dummyCert{}
 	group, _ := fdata.GetString()
 	ips, _ := fdata.GetString()
 	localIps, _ := fdata.GetString()
@@ -27,11 +26,11 @@ func FuzzFirewall_AddRule(data []byte) int {
 	caName, _ := fdata.GetString()
 	caSha, _ := fdata.GetString()
 	groups := []string{group}
-	_, ip, err := net.ParseCIDR(ips)
+	ip, err := netip.ParsePrefix(ips)
 	if err != nil {
 		return 0
 	}
-	_, localIp, err := net.ParseCIDR(localIps)
+	localIp, err := netip.ParsePrefix(localIps)
 	if err != nil {
 		return 0
 	}

@@ -2,6 +2,7 @@ package fuzz_firewall
 
 import (
 	"net"
+	"net/netip"
 	"time"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
@@ -49,7 +50,7 @@ func FuzzFirewallDrop(data []byte) int {
 	// 	Mask: net.IPMask{netMask[0], netMask[1], netMask[2], netMask[3]},
 	// }
 
-	var c cert.NebulaCertificate
+	var c dummyCert
 	fdata.GenerateStruct(&c)
 	// c := cert.NebulaCertificate{
 	// 	Details: cert.NebulaCertificateDetails{
@@ -74,7 +75,7 @@ func FuzzFirewallDrop(data []byte) int {
 	h.CreateRemoteCIDR(&c)
 
 	fw := nebula.NewFirewall(l, time.Second, time.Minute, time.Hour, &c)
-	fw.AddRule(true, firewall.ProtoAny, 0, 0, []string{"default-group"}, "", nil, nil, "", "")
+	fw.AddRule(true, firewall.ProtoAny, 0, 0, []string{"default-group"}, "", netip.Prefix{}, netip.Prefix{}, "", "")
 
 	cp := cert.NewCAPool()
 

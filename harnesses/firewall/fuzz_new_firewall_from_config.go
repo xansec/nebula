@@ -3,7 +3,6 @@ package fuzz_firewall
 import (
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 	"github.com/slackhq/nebula"
-	"github.com/slackhq/nebula/cert"
 	"github.com/slackhq/nebula/config"
 	"github.com/slackhq/nebula/test"
 )
@@ -14,7 +13,7 @@ func FuzzNewFirewallFromConfig(data []byte) int {
 	port, _ := fdata.GetInt()
 	proto, _ := fdata.GetByte()
 	host, _ := fdata.GetString()
-	var c *cert.NebulaCertificate
+	var c *dummyCert
 	fdata.GenerateStruct(&c)
 
 	l := test.NewLogger()

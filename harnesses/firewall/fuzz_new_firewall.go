@@ -5,7 +5,6 @@ import (
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 	"github.com/slackhq/nebula"
-	"github.com/slackhq/nebula/cert"
 	"github.com/slackhq/nebula/test"
 )
 
@@ -19,7 +18,7 @@ func FuzzNewFirewall(data []byte) int {
 		return 0
 	}
 
-	var c *cert.NebulaCertificate
+	var c *dummyCert
 	fdata.GenerateStruct(&c)
 	l := test.NewLogger()
 	tcpTimeoutDuration := time.Duration(tcpTimeout)

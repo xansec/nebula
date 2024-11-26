@@ -1,4 +1,4 @@
-FROM golang:1.22 as builder
+FROM golang:1.22 AS builder
 
 RUN apt update && apt install -y clang
 
@@ -8,26 +8,26 @@ WORKDIR /nebula/harnesses
 RUN go install github.com/dvyukov/go-fuzz/go-fuzz@latest github.com/dvyukov/go-fuzz/go-fuzz-build@latest
 RUN go get github.com/dvyukov/go-fuzz/go-fuzz-dep
 RUN go get github.com/AdaLogics/go-fuzz-headers
-# WORKDIR /nebula/harnesses/firewall
+WORKDIR /nebula/harnesses/firewall
 
-# RUN go-fuzz-build \
-#     -preserve crypto/internal/bigmod \
-#     -libfuzzer \
-#     -func FuzzAddFirewallRulesFromConfig \
-#     -o fuzz_add_firewall_rules_from_config.a && \
-#     clang \
-#     -fsanitize=fuzzer \
-#     fuzz_add_firewall_rules_from_config.a \
-#     -o fuzz_add_firewall_rules_from_config.libfuzzer
-# RUN go-fuzz-build \
-#     -preserve crypto/internal/bigmod \
-#     -libfuzzer \
-#     -func FuzzFirewall_AddRule \
-#     -o fuzz_firewall_add_rule.a && \
-#     clang \
-#     -fsanitize=fuzzer \
-#     fuzz_firewall_add_rule.a \
-#     -o fuzz_firewall_add_rule.libfuzzer
+RUN go-fuzz-build \
+    -preserve crypto/internal/bigmod \
+    -libfuzzer \
+    -func FuzzAddFirewallRulesFromConfig \
+    -o fuzz_add_firewall_rules_from_config.a && \
+    clang \
+    -fsanitize=fuzzer \
+    fuzz_add_firewall_rules_from_config.a \
+    -o fuzz_add_firewall_rules_from_config.libfuzzer
+RUN go-fuzz-build \
+    -preserve crypto/internal/bigmod \
+    -libfuzzer \
+    -func FuzzFirewall_AddRule \
+    -o fuzz_firewall_add_rule.a && \
+    clang \
+    -fsanitize=fuzzer \
+    fuzz_firewall_add_rule.a \
+    -o fuzz_firewall_add_rule.libfuzzer
 # RUN go-fuzz-build \
 #     -preserve crypto/internal/bigmod \
 #     -libfuzzer \
