@@ -3,10 +3,10 @@ name: Run Mayhem
 on:
   push:
     branches:
-      - main
+      - libfuzzer
   pull_request:
     branches:
-      - main
+      - libfuzzer
   workflow_dispatch:
   schedule:
     - cron: '0 7 * * 1'
