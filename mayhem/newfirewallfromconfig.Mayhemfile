@@ -1,4 +1,4 @@
-image: ghcr.io/xansec/nebula-tests:go-fuzz
+image: ghcr.io/xansec/nebula
 duration: 1200
 project: nebula
 target: newfirewallfromconfig
