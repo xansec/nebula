@@ -49,7 +49,7 @@ jobs:
       with:
         context: .
         push: true
-        file: mayhem/tests.Dockerfile
+        file: mayhem/Dockerfile
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.BRANCH_NAME }}
         labels: ${{ steps.meta.outputs.labels }}
 
@@ -69,6 +69,9 @@ jobs:
           - mayhem/firewall-drop.Mayhemfile
           - mayhem/newfirewall.Mayhemfile
           - mayhem/newfirewallfromconfig.Mayhemfile
+          - mayhem/newpacket.Mayhemfile
+          # - mayhem/bin-host.Mayhemfile
+          # - mayhem/bin-lighthouse.Mayhemfile
 
     steps:
       - uses: actions/checkout@v4
