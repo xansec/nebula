@@ -1180,3 +1180,9 @@ func (lhh *LightHouseHandler) handleHostPunchNotification(n *NebulaMeta, vpnIp n
 		}()
 	}
 }
+
+// Added for testing
+
+func (lhh *LightHouseHandler) HandleHostPunchNotificationWrapper(n *NebulaMeta, vpnIp netip.Addr, w EncWriter) {
+	lhh.handleHostPunchNotification(n, vpnIp, w)
+}

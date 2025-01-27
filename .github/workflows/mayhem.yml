@@ -67,9 +67,11 @@ jobs:
           - mayhem/firewall-addfirewallrulesfromconfig.Mayhemfile
           - mayhem/firewall-addrule.Mayhemfile
           - mayhem/firewall-drop.Mayhemfile
-          - mayhem/newfirewall.Mayhemfile
-          - mayhem/newfirewallfromconfig.Mayhemfile
-          - mayhem/newpacket.Mayhemfile
+          - mayhem/firewall-newfirewall.Mayhemfile
+          - mayhem/firewall-newfirewallfromconfig.Mayhemfile
+          - mayhem/outside-newpacket.Mayhemfile
+          - mayhem/lighthouse-addrport.Mayhemfile
+          - mayhem/lighthouse-hostpunchnotification.Mayhemfile
           # - mayhem/bin-host.Mayhemfile
           # - mayhem/bin-lighthouse.Mayhemfile
 

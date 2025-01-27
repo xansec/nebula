@@ -1,0 +1,8 @@
+image: ghcr.io/xansec/nebula
+duration: 1200
+project: nebula
+target: lighthouse-addrport
+
+cmds:
+  - cmd: /nebula/harnesses/lighthouse/fuzz_lighthouse_addrport.libfuzzer
+    libfuzzer: true

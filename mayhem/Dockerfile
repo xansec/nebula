@@ -79,11 +79,33 @@ RUN go-fuzz-build \
     fuzz_new_packet.a \
     -o fuzz_new_packet.libfuzzer
 
+WORKDIR /nebula/harnesses/lighthouse
+
+RUN go-fuzz-build \
+    -preserve crypto/internal/bigmod \
+    -libfuzzer \
+    -func FuzzAddrPort \
+    -o fuzz_lighthouse_addrport.a && \
+    clang \
+    -fsanitize=fuzzer \
+    fuzz_lighthouse_addrport.a \
+    -o fuzz_lighthouse_addrport.libfuzzer
+
+RUN go-fuzz-build \
+    -preserve crypto/internal/bigmod \
+    -libfuzzer \
+    -func FuzzHostPunchNotification \
+    -o fuzz_host_punch_notification.a && \
+    clang \
+    -fsanitize=fuzzer \
+    fuzz_host_punch_notification.a \
+    -o fuzz_host_punch_notification.libfuzzer
+
 
 FROM ubuntu
 RUN mkdir -p /nebula/harnesses/firewall /nebula/harnesses/outside
 COPY --from=builder /nebula/nebula /nebula/mayhem/configs/*.yml /nebula/*.crt /nebula/*.key /nebula
 COPY --from=builder /nebula/harnesses/firewall/*.libfuzzer /nebula/harnesses/firewall/
 COPY --from=builder /nebula/harnesses/outside/*.libfuzzer /nebula/harnesses/outside/
-
+COPY --from=builder /nebula/harnesses/lighthouse/*.libfuzzer /nebula/harnesses/lighthouse/
 
