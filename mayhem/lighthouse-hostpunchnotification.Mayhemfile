@@ -1,8 +1,0 @@
-image: ghcr.io/xansec/nebula
-duration: 1200
-project: nebula
-target: lighthouse-host-punch-notification
-
-cmds:
-  - cmd: /nebula/harnesses/lighthouse/fuzz_host_punch_notification.libfuzzer
-    libfuzzer: true

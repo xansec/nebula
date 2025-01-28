@@ -4,5 +4,5 @@ project: nebula
 target: lighthouse-addrport
 
 cmds:
-  - cmd: /nebula/harnesses/lighthouse/fuzz_lighthouse_addrport.libfuzzer
+  - cmd: /nebula/harnesses/lighthouse/fuzz_addrport.libfuzzer
     libfuzzer: true

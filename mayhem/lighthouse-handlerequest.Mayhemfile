@@ -1,0 +1,8 @@
+image: ghcr.io/xansec/nebula
+duration: 1200
+project: nebula
+target: lighthouse-handle-request
+
+cmds:
+  - cmd: /nebula/harnesses/lighthouse/fuzz_handle_request.libfuzzer
+    libfuzzer: true

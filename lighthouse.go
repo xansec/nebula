@@ -879,6 +879,11 @@ func (lh *LightHouse) metricTx(t NebulaMeta_MessageType, i int64) {
 	lh.metrics.Tx(header.MessageType(t), 0, i)
 }
 
+// Harnessing modification: expose LHH meta
+func (lhh *LightHouseHandler) GetMeta() *NebulaMeta {
+	return lhh.meta
+}
+
 // This method is similar to Reset(), but it re-uses the pointer structs
 // so that we don't have to re-allocate them
 func (lhh *LightHouseHandler) resetMeta() *NebulaMeta {
@@ -1179,10 +1184,4 @@ func (lhh *LightHouseHandler) handleHostPunchNotification(n *NebulaMeta, vpnIp n
 			w.SendMessageToVpnIp(header.Test, header.TestRequest, queryVpnIp, []byte(""), make([]byte, 12, 12), make([]byte, mtu))
 		}()
 	}
-}
-
-// Added for testing
-
-func (lhh *LightHouseHandler) HandleHostPunchNotificationWrapper(n *NebulaMeta, vpnIp netip.Addr, w EncWriter) {
-	lhh.handleHostPunchNotification(n, vpnIp, w)
 }
