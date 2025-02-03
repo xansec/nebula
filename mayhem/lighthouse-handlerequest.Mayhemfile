@@ -6,3 +6,6 @@ target: lighthouse-handle-request
 cmds:
   - cmd: /nebula/harnesses/lighthouse/fuzz_handle_request.libfuzzer
     libfuzzer: true
+    env:
+      GOMAXPROCS: "1"
+      GODEBUG: "asyncpreemptoff=1"
